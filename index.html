@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#071522" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2218%22 fill=%22%230a202b%22/><path d=%22M16 43 43 16m-17 0h17v17%22 fill=%22none%22 stroke=%22%2354e4dd%22 stroke-width=%226%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>" />
+  <title>Coastline Rush — 3D Drive</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+    :root{--ink:#f4f8fa;--muted:#a9bec8;--cyan:#54e4dd;--lime:#d5ff78;--glass:rgba(9,24,34,.68);--line:rgba(220,247,247,.16)}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071522;color:var(--ink);font-family:Outfit,system-ui,sans-serif;touch-action:none}
+    #game{position:fixed;inset:0;overflow:hidden;background:linear-gradient(#87c8d6,#f3bd86 48%,#567e65 49%,#243e39)}
+    canvas{display:block;width:100%;height:100%;outline:none}
+    .vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(5,16,24,.24),transparent 25%,transparent 73%,rgba(4,13,19,.45)),radial-gradient(ellipse at center,transparent 52%,rgba(2,10,16,.22) 100%)}
+    .topbar{position:absolute;top:calc(18px + env(safe-area-inset-top));left:clamp(16px,4vw,48px);right:clamp(16px,4vw,48px);display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none;z-index:3}
+    .brand{display:flex;align-items:center;gap:11px;text-shadow:0 2px 10px #1235}
+    .brand-mark{width:37px;height:37px;border:1px solid #ffffff55;border-radius:12px;display:grid;place-items:center;background:rgba(8,24,32,.48);backdrop-filter:blur(8px);color:var(--cyan);font-size:19px}
+    .brand-name{font-weight:800;font-size:15px;letter-spacing:.13em;line-height:1}.brand-sub{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.17em;color:#d9ecea99;margin-top:5px}
+    .stats{display:flex;gap:10px;align-items:flex-start}
+    .stat{min-width:88px;padding:10px 14px 9px;border:1px solid var(--line);border-radius:13px;background:var(--glass);backdrop-filter:blur(12px);box-shadow:0 8px 26px #06141c20}
+    .stat-label{font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.14em;font-size:9px;color:#afc3c9}.stat-value{font-size:21px;font-weight:700;line-height:1.1;margin-top:3px}.stat-value small{font-size:11px;color:#aec4c9;font-weight:500}
+    .speed-card{min-width:105px}.speed-value{font-variant-numeric:tabular-nums}.speed-value small{font-size:10px;letter-spacing:.12em}
+    .pause{pointer-events:auto;border:1px solid var(--line);background:var(--glass);color:white;width:40px;height:40px;border-radius:12px;cursor:pointer;font-size:17px;backdrop-filter:blur(12px);margin-left:2px}
+    .route{position:absolute;left:50%;top:calc(84px + env(safe-area-inset-top));transform:translateX(-50%);width:min(310px,42vw);z-index:2;pointer-events:none;text-align:center}
+    .route-label{font-family:'DM Mono',monospace;color:#f4f9e3cc;font-size:9px;letter-spacing:.22em;text-transform:uppercase;text-shadow:0 2px 8px #1834}
+    .route-track{height:3px;background:#ffffff4d;margin-top:8px;border-radius:5px;overflow:hidden}.route-fill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--lime));box-shadow:0 0 10px var(--cyan);transition:width .2s}
+    .route-dots{display:flex;justify-content:space-between;font:9px 'DM Mono',monospace;color:#fff9;margin-top:5px}
+    .controls{position:absolute;left:clamp(18px,5vw,60px);right:clamp(18px,5vw,60px);bottom:calc(22px + env(safe-area-inset-bottom));display:flex;align-items:flex-end;justify-content:space-between;z-index:4;pointer-events:none}
+    .steer-group{display:flex;gap:12px;pointer-events:auto}
+    .control-btn{width:66px;height:66px;border-radius:20px;border:1px solid #e6ffff44;color:#fff;background:rgba(8,23,31,.58);backdrop-filter:blur(12px);box-shadow:0 8px 24px #05131d55,inset 0 1px #ffffff18;display:grid;place-items:center;font-size:25px;cursor:pointer;user-select:none;touch-action:none;transition:transform .08s,background .1s,border .1s}
+    .control-btn:active,.control-btn.pressed{transform:scale(.94);background:rgba(47,147,145,.68);border-color:#b3fff5aa}
+    .control-caption{font:8px 'DM Mono',monospace;letter-spacing:.14em;color:#ffffffa8;text-align:center;margin-top:7px}
+    .side-control{display:flex;flex-direction:column;align-items:center;pointer-events:auto}
+    .brake{width:59px;height:59px;border-radius:18px;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:.12em;color:#ffdfca}
+    .hint{position:absolute;left:50%;bottom:calc(29px + env(safe-area-inset-bottom));transform:translateX(-50%);font:10px 'DM Mono',monospace;letter-spacing:.09em;color:#f1f8f2a6;text-shadow:0 2px 8px #000;white-space:nowrap;pointer-events:none}
+    .overlay{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(4,14,21,.28);backdrop-filter:blur(3px);transition:opacity .25s,visibility .25s}
+    .overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
+    .panel{width:min(480px,94vw);padding:clamp(26px,5vw,44px);border:1px solid #e4ffff32;border-radius:26px;background:linear-gradient(145deg,rgba(12,31,41,.93),rgba(7,22,32,.91));box-shadow:0 28px 90px #02090e8c;position:relative;overflow:hidden}
+    .panel:before{content:'';position:absolute;right:-80px;top:-130px;width:250px;height:250px;border-radius:50%;background:#56e4dd17;filter:blur(5px)}
+    .eyebrow{font:10px 'DM Mono',monospace;letter-spacing:.2em;color:var(--cyan);text-transform:uppercase;position:relative}
+    h1{font-size:clamp(42px,8vw,66px);line-height:.9;letter-spacing:-.055em;margin:19px 0 16px;font-weight:800;position:relative}h1 span{display:block;color:var(--lime)}
+    .intro{color:#c3d4d8;line-height:1.55;font-size:14px;max-width:350px;position:relative;margin:0 0 24px}
+    .brief{display:flex;gap:10px;margin-bottom:26px;position:relative}.brief-item{flex:1;background:#ffffff08;border:1px solid #ffffff12;border-radius:13px;padding:12px 13px}.brief-icon{color:var(--lime);font-size:16px}.brief-title{font-size:11px;font-weight:700;margin-top:7px}.brief-text{font-size:10px;color:#a8bec4;margin-top:2px}
+    .primary{position:relative;width:100%;border:0;border-radius:14px;padding:15px 20px;background:linear-gradient(100deg,#74ede1,#d4ff78);color:#08212a;font:800 13px Outfit,sans-serif;letter-spacing:.1em;cursor:pointer;box-shadow:0 8px 30px #61e8da32;transition:transform .15s,filter .15s}.primary:active{transform:scale(.98);filter:brightness(.93)}
+    .footnote{position:relative;text-align:center;font:9px 'DM Mono',monospace;letter-spacing:.09em;color:#81989e;margin-top:14px}
+    .result{text-align:center}.result .eyebrow{color:var(--lime)}.result h2{font-size:40px;line-height:1;margin:14px 0 8px;letter-spacing:-.04em}.result-copy{color:#b4c8cc;font-size:13px;margin:0 0 22px}.result-score{font:500 12px 'DM Mono',monospace;color:#d1e4e6;margin:0 0 23px}.result-score strong{font-size:25px;color:var(--cyan);display:block;margin-top:7px}
+    .toast{position:absolute;z-index:5;left:50%;top:27%;transform:translate(-50%,-12px);padding:9px 16px;background:#09242de8;border:1px solid #8ffff477;border-radius:99px;color:var(--lime);font:11px 'DM Mono',monospace;letter-spacing:.1em;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}.toast.show{opacity:1;transform:translate(-50%,0)}
+    .crash-flash{position:absolute;inset:0;background:#ff745522;opacity:0;pointer-events:none;z-index:1}.crash-flash.hit{animation:flash .4s ease-out}@keyframes flash{0%{opacity:1}100%{opacity:0}}
+    @media(max-width:700px){.topbar{top:calc(12px + env(safe-area-inset-top));left:14px;right:14px}.brand{gap:7px}.brand-mark{width:32px;height:32px;border-radius:10px}.brand-name{font-size:12px}.brand-sub{font-size:7px}.stats{gap:5px}.stat{min-width:61px;padding:8px 8px 7px;border-radius:10px}.stat-label{font-size:7px}.stat-value{font-size:17px}.speed-card{min-width:74px}.pause{width:36px;height:36px;border-radius:10px}.route{top:calc(64px + env(safe-area-inset-top));width:min(260px,56vw)}.controls{left:18px;right:18px;bottom:calc(16px + env(safe-area-inset-bottom))}.control-btn{width:60px;height:60px;border-radius:18px}.steer-group{gap:9px}.brake{width:54px;height:54px}.hint{display:none}.panel{padding:27px 24px;border-radius:22px}.intro{font-size:13px}.brief-item{padding:10px}.brief-title{font-size:10px}}
+    @media(max-width:470px){.topbar{left:10px;right:10px}.brand{gap:6px}.brand-mark{width:29px;height:29px;font-size:16px}.brand-name{font-size:10px;letter-spacing:.1em}.brand-sub{display:none}.stats{gap:3px}.stat{min-width:47px;padding:7px 6px 6px}.stat-label{font-size:6px;letter-spacing:.1em}.stat-value{font-size:15px}.stat-value small{font-size:8px}.speed-card{min-width:65px}.pause{width:32px;height:32px;font-size:14px}}
+    @media(max-height:620px) and (orientation:landscape){.panel{padding:20px 27px}.panel h1{font-size:42px;margin:12px 0}.intro{margin-bottom:14px}.brief{margin-bottom:14px}.footnote{margin-top:8px}.controls{bottom:calc(10px + env(safe-area-inset-bottom))}.control-btn{width:52px;height:52px}.route{top:calc(66px + env(safe-area-inset-top))}}
+  </style>
+</head>
+<body>
+  <main id="game" aria-label="Coastline Rush 3D driving game">
+    <canvas id="scene"></canvas><div class="vignette"></div><div class="crash-flash" id="flash"></div>
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">↗</div><div><div class="brand-name">COASTLINE RUSH</div><div class="brand-sub">PACIFIC COAST // 01</div></div></div>
+      <div class="stats">
+        <div class="stat speed-card"><div class="stat-label">SPEED</div><div class="stat-value speed-value"><span id="speed">000</span><small> KM/H</small></div></div>
+        <div class="stat"><div class="stat-label">DISTANCE</div><div class="stat-value"><span id="distance">0.0</span><small> KM</small></div></div>
+        <div class="stat"><div class="stat-label">SCORE</div><div class="stat-value" id="score">00000</div></div>
+        <button class="pause" id="pause" aria-label="Pause game">Ⅱ</button>
+      </div>
+    </header>
+    <div class="route"><div class="route-label">Sunset sprint · 2.5 km</div><div class="route-track"><div class="route-fill" id="routeFill"></div></div><div class="route-dots"><span>START</span><span>FINISH</span></div></div>
+    <div class="toast" id="toast">+250 CLEAN PASS</div>
+    <div class="controls" id="controls">
+      <div class="steer-group">
+        <div><button class="control-btn" id="left" aria-label="Steer left">‹</button><div class="control-caption">LEFT</div></div>
+        <div><button class="control-btn" id="right" aria-label="Steer right">›</button><div class="control-caption">RIGHT</div></div>
+      </div>
+      <div class="hint">A / D OR ← / → TO STEER &nbsp;·&nbsp; SPACE TO BRAKE</div>
+      <div class="side-control"><button class="control-btn brake" id="brake" aria-label="Brake">BRAKE</button><div class="control-caption">SLOW DOWN</div></div>
+    </div>
+    <section class="overlay" id="startOverlay">
+      <div class="panel">
+        <div class="eyebrow">A sunset sprint • 2.5 km</div>
+        <h1>Chase the <span>coast.</span></h1>
+        <p class="intro">Take the scenic route at full tilt. Weave through traffic, collect the glow and make it to the finish before the sun dips.</p>
+        <div class="brief">
+          <div class="brief-item"><div class="brief-icon">↔</div><div class="brief-title">Find your line</div><div class="brief-text">Dodge the traffic</div></div>
+          <div class="brief-item"><div class="brief-icon">✦</div><div class="brief-title">Grab the glow</div><div class="brief-text">Coins boost your score</div></div>
+          <div class="brief-item"><div class="brief-icon">⌁</div><div class="brief-title">Stay smooth</div><div class="brief-text">Clean passes earn more</div></div>
+        </div>
+        <button class="primary" id="startBtn">START YOUR ENGINE&nbsp; →</button>
+        <div class="footnote">TOUCH CONTROLS READY · LANDSCAPE OR PORTRAIT</div>
+      </div>
+    </section>
+    <section class="overlay hidden" id="endOverlay"><div class="panel result"><div class="eyebrow" id="resultEyebrow">RUN COMPLETE</div><h2 id="resultTitle">Coast conquered.</h2><p class="result-copy" id="resultCopy">The horizon looks good on you.</p><div class="result-score">FINAL SCORE<strong id="finalScore">0</strong></div><button class="primary" id="againBtn">DRIVE AGAIN&nbsp; ↻</button></div></section>
+  </main>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
